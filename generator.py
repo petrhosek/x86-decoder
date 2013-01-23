@@ -912,8 +912,9 @@ def GetCoreRoot(has_rex, rex_w, rex_r, rex_x, rex_b, nacl_mode,
   # This moves %rsp by 2 bytes.
   # The original x86-64 validator does not allow this although the
   # original x86-32 validator does.
-  if not nacl_mode:
-    Add('66 6a', 'data16 push', [('imm', 8)])
+  # TODO: does not seem to be valid in x86-64.
+  # if not nacl_mode:
+  #   Add('66 6a', 'push', [('imm', 8)])
 
   AddLW(0x69, 'imul', ['reg', 'rm', 'imm'])
   AddLW(0x6b, 'imul', ['reg', 'rm', 'imm8'])
@@ -971,19 +972,21 @@ def GetCoreRoot(has_rex, rex_w, rex_r, rex_x, rex_b, nacl_mode,
   Add('f4', 'hlt', [])
 
   if not nacl_mode:
-    Add('27', 'daa', [])
-    Add('2f', 'das', [])
-    Add('37', 'aaa', [])
-    Add('3f', 'aas', [])
-    Add('60', 'pusha', [])
-    Add('61', 'popa', [])
+    # Not valid for x86-64.
+    #Add('27', 'daa', [])
+    #Add('2f', 'das', [])
+    #Add('37', 'aaa', [])
+    #Add('3f', 'aas', [])
+    #Add('60', 'pusha', [])
+    #Add('61', 'popa', [])
     Add('9c', 'pushf', [])
     Add('9d', 'popf', [])
     Add('c2', 'ret', [('imm', 16)])
     Add('c3', 'ret', [])
     Add('cc', 'int3', [])
     Add('cd', 'int', [('imm', 8)])
-    Add('ce', 'into', [])
+    # Not valid for x86-64.
+    #Add('ce', 'into', [])
     Add('cf', 'iret', [])
     Add('fa', 'cli', [])
     Add('fb', 'sti', [])
@@ -1018,8 +1021,10 @@ def GetCoreRoot(has_rex, rex_w, rex_r, rex_x, rex_b, nacl_mode,
     Add('e0', 'loopne', [('jump_dest', 8)])
     Add('e1', 'loope', [('jump_dest', 8)])
     Add('e2', 'loop', [('jump_dest', 8)])
-    Add('e3', 'jecxz', [('jump_dest', 8)])
-  AddLW(0xe9, 'jmp', ['jump_dest'])
+    if not has_rex:
+      Add('e3', 'jrcxz', [('jump_dest', 8)])
+      Add('67 e3', 'jecxz', [('jump_dest', 8)])
+  Add('e9', 'jmp', [('jump_dest', 32)])
   Add('eb', 'jmp', [('jump_dest', 8)])
 
   Add('f5', 'cmc', []) # Complement carry flag
@@ -1046,8 +1051,8 @@ def GetCoreRoot(has_rex, rex_w, rex_r, rex_x, rex_b, nacl_mode,
   # NaCl disallows using these without a mask instruction first.
   # Note that allowing jmp/call with a data16 prefix isn't very useful.
   if not nacl_mode:
-    AddLW(0xff, 'call', ['rm'], modrm_opcode=2)
-    AddLW(0xff, 'jmp', ['rm'], modrm_opcode=4)
+    Add('ff', 'call', [('rm', 64)], modrm_opcode=2)
+    Add('ff', 'jmp', [('rm', 64)], modrm_opcode=4)
 
   AddPair(0x88, 'mov', ['rm', {'kind': 'reg', 'readonly': True}])
   AddPair(0x8a, 'mov', ['reg', 'rm'])
@@ -1304,10 +1309,10 @@ def GetCoreRoot(has_rex, rex_w, rex_r, rex_x, rex_b, nacl_mode,
            ['reg', {'kind': 'rm', 'readonly': True}])
     # 4-byte offset jumps.
     Add('0f ' + Byte(0x80 + cond_num), 'j' + cond_name, [('jump_dest', 32)])
-    # 2-byte offset jumps.
-    if not nacl_mode:
-      Add('66 0f ' + Byte(0x80 + cond_num), 'j' + cond_name,
-          [('jump_dest', 16)])
+    # 2-byte offset jumps. Not for x86-64 mode.
+    # if not nacl_mode:
+    #   Add('66 0f ' + Byte(0x80 + cond_num), 'j' + cond_name,
+    #       [('jump_dest', 32)])
     # Byte set on condition
     Add('0f ' + Byte(0x90 + cond_num), 'set' + cond_name, [('rm', 8)],
         modrm_opcode=0)
@@ -1459,8 +1464,12 @@ def GetCoreRoot(has_rex, rex_w, rex_r, rex_x, rex_b, nacl_mode,
   # SSE
   # Group 15
   if not nacl_mode:
-    Add('0f ae', 'fxsave', [('mem', 'fxsave_size')], modrm_opcode=0)
-    Add('0f ae', 'fxrstor', [('mem', 'fxsave_size')], modrm_opcode=1)
+    if rex_w:
+      Add('0f ae', 'fxsave64', [('mem', 'fxsave_size')], modrm_opcode=0)
+      Add('0f ae', 'fxrstor64', [('mem', 'fxsave_size')], modrm_opcode=1)
+    else:
+      Add('0f ae', 'fxsave', [('mem', 'fxsave_size')], modrm_opcode=0)
+      Add('0f ae', 'fxrstor', [('mem', 'fxsave_size')], modrm_opcode=1)
   Add('0f ae', 'ldmxcsr', [('mem', 32)], modrm_opcode=2)
   Add('0f ae', 'stmxcsr', [('mem', 32)], modrm_opcode=3)
   # TODO: The AMD manual permits 8 different encodings of each of
