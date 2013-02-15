@@ -65,7 +65,7 @@ def DisassembleTestCallback(get_instructions, bits):
 whitespace_regexp = re.compile('\s+')
 comment_regexp = re.compile('\s+#.*$')
 jump_regexp = re.compile(
-    '^(jn?[a-z]{1,2}|call|jmp[lw]?|je?cxz|loop(e|ne)?) 0x[0-9a-f]+$')
+    '^(jn?[a-z]{1,2}|call|jmp[lw]?|j[er]?cxz|loop(e|ne)?) 0x[0-9a-f]+$')
 rex_regexp = re.compile(r'rex(\.W?R?X?B?)? ')
 
 
@@ -86,6 +86,10 @@ def NormaliseObjdumpDisasm(disasm):
             .replace('0x1111', 'VALUE16')
             .replace('0x11', 'VALUE8')
             .replace(',', ', '))
+  # Remove data32 annotations.
+  disasm = disasm.replace('data32 ', '')
+  # Replace movabs with mov.
+  disasm = disasm.replace('movabs', 'mov')
   return disasm
 
 
